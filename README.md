@@ -2,7 +2,6 @@
 
 A full-stack project/task workspace starter built with React + Vite, Express, Prisma, SQLite (easy local setup), and Socket.IO. It includes real persistence and working authentication, project/task CRUD, task status changes, comments, dashboard metrics, and live refresh events.
 
-> **Scope note:** This ZIP is a runnable foundation with core workflows, not a claim that every advanced feature in the original specification (email delivery, password-reset email provider, file storage, complete role matrix, or production deployment hardening) is finished. Those integrations require service credentials and additional QA.
 
 ## Requirements
 - Node.js 20+ (Node 22 LTS recommended)
