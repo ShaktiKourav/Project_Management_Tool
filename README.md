@@ -11,8 +11,8 @@ A full-stack project/task workspace starter built with React + Vite, Express, Pr
 - PostgreSQL is recommended for deployment; see “PostgreSQL”.
 
 ## Run locally (Windows PowerShell)
-1. Extract this ZIP.
-2. Open a terminal in the extracted `TaskFlow` folder.
+1. create folder
+2. Open a terminal in the `TaskFlow`
 3. Install dependencies:
    ```powershell
    npm install
