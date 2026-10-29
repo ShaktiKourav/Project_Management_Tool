@@ -1,0 +1,13 @@
+{
+  "name": "taskflow",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client",
+    "db:push": "npm run db:push -w server",
+    "db:seed": "npm run db:seed -w server"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}
