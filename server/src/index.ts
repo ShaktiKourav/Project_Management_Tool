@@ -73,7 +73,12 @@ io.on('connection', socket => {
   });
 });
 function emitProject(projectId: string, event: string, data: unknown) { io.to(`project:${projectId}`).emit(event, data); }
-
+app.get("/", (req, res) => {
+  res.json({
+    message: "TaskFlow API is running successfully 🚀",
+    status: "OK"
+  });
+});
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.post('/api/auth/register', asyncRoute(async (req, res) => {
   const schema = z.object({ name: z.string().trim().min(2).max(80), email: z.string().trim().email().max(254), password: z.string().min(10).max(128) });
@@ -202,3 +207,5 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 const port = Number(process.env.PORT || 4000);
 server.listen(port, () => console.log(`TaskFlow API listening at http://localhost:${port}`));
 process.on('SIGINT', async () => { await prisma.$disconnect(); server.close(() => process.exit(0)); });
+
+
