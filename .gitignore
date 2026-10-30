@@ -18,3 +18,9 @@ node_modules/
 !.env.example
 **/dev.db
 **/dev.db-journal
+uploads/*
+!uploads/.gitkeepc
+server/.env
+client/.env
+client/src/vite-env.d.ts
+
