@@ -116,36 +116,41 @@ app.post('/api/projects', auth, asyncRoute(async (req, res) => {
   const project = await prisma.project.create({ data: { ...parsed.data, members: { create: { userId: req.userId!, role: 'OWNER' } } }, include: projectInclude });
   return res.status(201).json({ project });
 }));
+
+const getParamId = (id: string | string[]): string => {
+  return Array.isArray(id) ? id[0] : id;
+};
+
 app.get('/api/projects/:id', auth, asyncRoute(async (req, res) => {
-  if (!(await canAccessProject(req.params.id, req.userId!))) return res.status(404).json({ error: 'Project not found.' });
-  const project = await prisma.project.findUnique({ where: { id: req.params.id }, include: projectInclude });
+  if (!(await canAccessProject(getParamId(req.params.id), req.userId!))) return res.status(404).json({ error: 'Project not found.' });
+  const project = await prisma.project.findUnique({ where: { id: getParamId(req.params.id) }, include: projectInclude });
   if (!project) return res.status(404).json({ error: 'Project not found.' });
   return res.json({ project });
 }));
 app.patch('/api/projects/:id', auth, asyncRoute(async (req, res) => {
-  const member = await prisma.projectMember.findUnique({ where: { userId_projectId: { userId: req.userId!, projectId: req.params.id } } });
+  const member = await prisma.projectMember.findUnique({ where: { userId_projectId: { userId: req.userId!, projectId: getParamId(req.params.id) } } });
   if (!member || !['OWNER', 'ADMIN'].includes(member.role)) return res.status(403).json({ error: 'Only project owners and admins can edit this project.' });
   const parsed = z.object({ name: z.string().trim().min(2).max(100).optional(), description: z.string().max(1000).optional(), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), archived: z.boolean().optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid project details.' });
-  const project = await prisma.project.update({ where: { id: req.params.id }, data: parsed.data, include: projectInclude });
+  const project = await prisma.project.update({ where: { id: getParamId(req.params.id) }, data: parsed.data, include: projectInclude });
   return res.json({ project });
 }));
 app.delete('/api/projects/:id', auth, asyncRoute(async (req, res) => {
-  const member = await prisma.projectMember.findUnique({ where: { userId_projectId: { userId: req.userId!, projectId: req.params.id } } });
+  const member = await prisma.projectMember.findUnique({ where: { userId_projectId: { userId: req.userId!, projectId: getParamId(req.params.id) } } });
   if (!member || member.role !== 'OWNER') return res.status(403).json({ error: 'Only the project owner can delete this project.' });
-  await prisma.project.delete({ where: { id: req.params.id } });
+  await prisma.project.delete({ where: { id: getParamId(req.params.id) } });
   return res.json({ ok: true });
 }));
 app.post('/api/projects/:id/tasks', auth, asyncRoute(async (req, res) => {
-  if (!(await canAccessProject(req.params.id, req.userId!))) return res.status(404).json({ error: 'Project not found.' });
+  if (!(await canAccessProject(getParamId(req.params.id), req.userId!))) return res.status(404).json({ error: 'Project not found.' });
   const parsed = z.object({ title: z.string().trim().min(2).max(160), description: z.string().max(4000).optional(), status: z.enum(['BACKLOG','TODO','IN_PROGRESS','IN_REVIEW','DONE']).optional(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional(), dueDate: z.string().datetime().optional().nullable() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Check the task title, status, priority, or due date.' });
-  const task = await prisma.task.create({ data: { ...parsed.data, dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null, projectId: req.params.id, creatorId: req.userId! }, include: { assignees: { include: { user: { select: { id: true, name: true, email: true } } } }, comments: { include: { user: { select: { id: true, name: true } } } } } });
-  emitProject(req.params.id, 'task:created', { taskId: task.id });
+  const task = await prisma.task.create({ data: { ...parsed.data, dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null, projectId: getParamId(req.params.id), creatorId: req.userId! }, include: { assignees: { include: { user: { select: { id: true, name: true, email: true } } } }, comments: { include: { user: { select: { id: true, name: true } } } } } });
+  emitProject(getParamId(req.params.id), 'task:created', { taskId: task.id });
   return res.status(201).json({ task });
 }));
 app.patch('/api/tasks/:id', auth, asyncRoute(async (req, res) => {
-  const task = await taskAccess(req.params.id, req.userId!);
+  const task = await taskAccess(getParamId(req.params.id), req.userId!);
   if (!task) return res.status(404).json({ error: 'Task not found.' });
   const parsed = z.object({ title: z.string().trim().min(2).max(160).optional(), description: z.string().max(4000).optional(), status: z.enum(['BACKLOG','TODO','IN_PROGRESS','IN_REVIEW','DONE']).optional(), priority: z.enum(['LOW','MEDIUM','HIGH','URGENT']).optional(), dueDate: z.string().datetime().nullable().optional(), position: z.number().int().min(0).optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid task update.' });
@@ -155,14 +160,14 @@ app.patch('/api/tasks/:id', auth, asyncRoute(async (req, res) => {
   return res.json({ task: updated });
 }));
 app.delete('/api/tasks/:id', auth, asyncRoute(async (req, res) => {
-  const task = await taskAccess(req.params.id, req.userId!);
+  const task = await taskAccess(getParamId(req.params.id), req.userId!);
   if (!task) return res.status(404).json({ error: 'Task not found.' });
   await prisma.task.delete({ where: { id: task.id } });
   emitProject(task.projectId, 'task:deleted', { taskId: task.id });
   return res.json({ ok: true });
 }));
 app.post('/api/tasks/:id/comments', auth, asyncRoute(async (req, res) => {
-  const task = await taskAccess(req.params.id, req.userId!);
+  const task = await taskAccess(getParamId(req.params.id), req.userId!);
   if (!task) return res.status(404).json({ error: 'Task not found.' });
   const parsed = z.object({ body: z.string().trim().min(1).max(2000) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Comment must contain 1–2000 characters.' });
