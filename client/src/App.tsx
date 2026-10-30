@@ -5,8 +5,13 @@ import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { Activity, ArrowDownUp, Bell, CalendarDays, Check, CheckCheck, ChevronDown, CircleHelp, Command, FileText, Filter, FolderKanban, Gauge, LayoutGrid, List, LogOut, Menu, MessageCircle, Moon, MoreHorizontal, Plus, Search, Settings, Sparkles, Sun, Users, X, Zap, CircleAlert, Clock3, Trash2, PanelsTopLeft } from 'lucide-react';
 
-const api = axios.create({ baseURL: '/api', withCredentials: true });
+const api = axios.create({
+  baseURL: `${import.meta.env.VITE_API_URL}/api`,
+  withCredentials: true
+});
+
 type User = { id: string; name: string; email: string; jobTitle?: string };
+
 type Comment = { id: string; body: string; createdAt: string; user: { id: string; name: string } };
 type Task = { id: string; title: string; description: string; status: string; priority: string; dueDate?: string | null; position: number; assignees: { user: User }[]; comments: Comment[] };
 type Project = { id: string; name: string; description: string; color: string; tasks: Task[]; members: { role: string; user: User }[] };
