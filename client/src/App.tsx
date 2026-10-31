@@ -6,8 +6,10 @@ import { io, Socket } from 'socket.io-client';
 import { Activity, ArrowDownUp, Bell, CalendarDays, Check, CheckCheck, ChevronDown, CircleHelp, Command, FileText, Filter, FolderKanban, Gauge, LayoutGrid, List, LogOut, Menu, MessageCircle, Moon, MoreHorizontal, Plus, Search, Settings, Sparkles, Sun, Users, X, Zap, CircleAlert, Clock3, Trash2, PanelsTopLeft } from 'lucide-react';
 
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api`,
-  withCredentials: true
+  baseURL: import.meta.env.DEV
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : "/api",
+  withCredentials: true,
 });
 
 type User = { id: string; name: string; email: string; jobTitle?: string };

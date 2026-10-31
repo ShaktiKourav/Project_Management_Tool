@@ -1,0 +1,9 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://project-management-tool-backend-2fy9.onrender.com/api/$1"
+    }
+  ]
+}
