@@ -16,18 +16,22 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:5173',
   process.env.CLIENT_ORIGIN
-].filter(Boolean);
+].filter((origin): origin is string => Boolean(origin));
 
-const corsOptions = {
-  origin: (requestOrigin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.error('Blocked CORS origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
-};const secret = process.env.SESSION_SECRET;
+  credentials: true,
+};
+
+
+const secret = process.env.SESSION_SECRET;
 if (!secret || secret.length < 24) {
   console.warn('SESSION_SECRET is missing or shorter than 24 characters. Set it in server/.env before use.');
 }
