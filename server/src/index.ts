@@ -13,23 +13,40 @@ import { z } from 'zod';
 const prisma = new PrismaClient();
 const app = express();
 const server = http.createServer(app);
-const origin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
-const secret = process.env.SESSION_SECRET;
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.CLIENT_ORIGIN
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (requestOrigin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};const secret = process.env.SESSION_SECRET;
 if (!secret || secret.length < 24) {
   console.warn('SESSION_SECRET is missing or shorter than 24 characters. Set it in server/.env before use.');
 }
 const JWT_SECRET = secret || 'local-development-secret-change-this-now';
-const io = new Server(server, { cors: { origin, credentials: true } });
-
+const io = new Server(server, { cors: corsOptions });
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
+app.use(cors(corsOptions));app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 type AuthedRequest = Request & { userId?: string };
 const tokenFor = (id: string) => jwt.sign({ sub: id }, JWT_SECRET, { expiresIn: '7d' });
 function setSession(res: Response, id: string) {
-  res.cookie('taskflow_session', tokenFor(id), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 7 * 86400000, path: '/' });
+  res.cookie('taskflow_session', tokenFor(id), {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 86400000,
+    path: '/'
+  });
 }
 const auth = async (req: AuthedRequest, res: Response, next: NextFunction) => {
   try {
@@ -99,7 +116,15 @@ app.post('/api/auth/login', asyncRoute(async (req, res) => {
   setSession(res, user.id);
   return res.json({ user: { id: user.id, name: user.name, email: user.email, jobTitle: user.jobTitle } });
 }));
-app.post('/api/auth/logout', (_req, res) => { res.clearCookie('taskflow_session', { path: '/' }); res.json({ ok: true }); });
+app.post('/api/auth/logout', (_req, res) => {
+  res.clearCookie('taskflow_session', {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/'
+  });
+  res.json({ ok: true });
+});
 app.get('/api/auth/me', auth, asyncRoute(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { id: true, name: true, email: true, jobTitle: true, createdAt: true } });
   if (!user) return res.status(401).json({ error: 'Account not found.' });
